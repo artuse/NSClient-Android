@@ -1,24 +1,28 @@
 package info.nightscout.client.receivers;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.NetworkInfo;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.os.Bundle;
+import android.support.v4.content.WakefulBroadcastReceiver;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import info.nightscout.client.MainApp;
-import info.nightscout.client.events.RestartEvent;
+import info.nightscout.client.services.ServiceNS;
 
-public class NetworkChangeReceiver extends BroadcastReceiver {
+public class NetworkChangeReceiver extends WakefulBroadcastReceiver {
     private static Logger log = LoggerFactory.getLogger(NetworkChangeReceiver.class);
 
     @Override
     public void onReceive(final Context context, final Intent intent) {
+        // Wakeup service
+        startWakefulService(context, new Intent(context, ServiceNS.class)
+                .setAction(intent.getAction())
+                .putExtras(intent));
+
         Bundle bundles = intent.getExtras();
         if (bundles == null)
             return;
@@ -36,7 +40,7 @@ public class NetworkChangeReceiver extends BroadcastReceiver {
                 //log.debug("NETCHANGE:   networkInfo: " + info);
                 if (info.isConnected()) {
                     log.debug("NETCHANGE:   connected " + info.getTypeName());
-                    MainApp.bus().post(new RestartEvent());
+                    //MainApp.bus().post(new EventRestart());
                 } else {
                     log.debug("NETCHANGE:   disconnected " + info.getTypeName());
                 }
@@ -84,6 +88,6 @@ public class NetworkChangeReceiver extends BroadcastReceiver {
             wifi_state = intent.getIntExtra("wifi_state", -1);
             if (wifi_state != -1) log.debug("NETCHANGE:   wifi_state: " + wifi_state);
         }
-
+        completeWakefulIntent(intent);
     }
 }

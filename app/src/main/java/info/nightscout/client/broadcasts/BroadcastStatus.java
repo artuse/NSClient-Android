@@ -2,6 +2,7 @@ package info.nightscout.client.broadcasts;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
 import android.os.PowerManager;
@@ -11,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import info.nightscout.client.MainApp;
+import info.nightscout.client.NSClient;
 import info.nightscout.client.data.NSStatus;
 
 /**
@@ -20,26 +23,23 @@ public class BroadcastStatus {
     private static Logger log = LoggerFactory.getLogger(BroadcastStatus.class);
 
     public void handleNewStatus(NSStatus status, Context context, boolean isDelta) {
-        PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
-        PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-                "sendQueue");
-        wakeLock.acquire();
+        Bundle bundle = new Bundle();
         try {
-            Bundle bundle = new Bundle();
-            bundle.putString("status", status.getData().toString());
-            bundle.putBoolean("delta", isDelta);
-            Intent intent = new Intent(Intents.ACTION_NEW_STATUS);
-            intent.putExtras(bundle);
-            intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
-            context.sendBroadcast(intent);
-            List<ResolveInfo> x = context.getPackageManager().queryBroadcastReceivers(intent, 0);
+            bundle.putString("nsclientversionname", MainApp.instance().getPackageManager().getPackageInfo(MainApp.instance().getPackageName(), 0).versionName);
+            bundle.putInt("nsclientversioncode", MainApp.instance().getPackageManager().getPackageInfo(MainApp.instance().getPackageName(), 0).versionCode);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        };
+        bundle.putString("nightscoutversionname", NSClient.nightscoutVersionName);
+        bundle.putInt("nightscoutversioncode", NSClient.nightscoutVersionCode);
+        bundle.putString("status", status.getData().toString());
+        bundle.putBoolean("delta", isDelta);
+        Intent intent = new Intent(Intents.ACTION_NEW_STATUS);
+        intent.putExtras(bundle);
+        intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
+        context.sendBroadcast(intent);
+        List<ResolveInfo> x = context.getPackageManager().queryBroadcastReceivers(intent, 0);
 
-            log.debug("STATUS: " + x.size() + " receivers");
-
-        } finally {
-            wakeLock.release();
-        }
+        log.debug("STATUS: " + x.size() + " receivers");
     }
-
-
 }

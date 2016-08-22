@@ -1,4 +1,19 @@
+buildscript {
+    repositories {
+        maven { url 'https://maven.fabric.io/public' }
+    }
+
+    dependencies {
+        classpath 'io.fabric.tools:gradle:1.+'
+    }
+}
 apply plugin: 'com.android.application'
+apply plugin: 'io.fabric'
+
+repositories {
+    maven { url 'https://maven.fabric.io/public' }
+}
+
 
 android {
     compileSdkVersion 23
@@ -8,8 +23,8 @@ android {
         applicationId "info.nightscout.client"
         minSdkVersion 19
         targetSdkVersion 22
-        versionCode 105
-        versionName "1.05"
+        versionCode 118
+        versionName "1.18"
     }
     buildTypes {
         release {
@@ -34,5 +49,8 @@ dependencies {
     compile ('io.socket:socket.io-client:0.7.0') {
         // excluding org.json which is provided by Android
         exclude group: 'org.json', module: 'json'
+    }
+    compile('com.crashlytics.sdk.android:crashlytics:2.5.5@aar') {
+        transitive = true;
     }
 }

@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -34,7 +35,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import info.nightscout.client.broadcasts.Intents;
 import info.nightscout.client.data.UploadQueue;
-import info.nightscout.client.events.RestartEvent;
+import info.nightscout.client.events.EventRestart;
 import info.nightscout.client.services.ServiceNS;
 import info.nightscout.client.tests.TestReceiveID;
 import info.nightscout.client.utils.DateUtil;
@@ -55,12 +56,19 @@ public class MainActivity extends AppCompatActivity {
     private TextView mTextView;
     static private ScrollView scrollview;
     private Switch switchAutoscroll;
+    TextViewLogger newAppender;
     private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        try {
+            setTitle("NS Client v" + getPackageManager().getPackageInfo(getPackageName(), 0).versionName);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
 
         if(handler==null) {
             handlerThread = new HandlerThread(MainActivity.class.getSimpleName() + "Handler");
@@ -75,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
         LoggerContext lc = (LoggerContext) LoggerFactory.getILoggerFactory();
         lc.getLoggerList();
         Logger logger = (Logger) LoggerFactory.getLogger("ROOT");
-        TextViewLogger newAppender = new TextViewLogger(mTextView, new Handler(Looper.getMainLooper()));
+        newAppender = new TextViewLogger(mTextView, new Handler(Looper.getMainLooper()));
         newAppender.setContext(lc);
         newAppender.start();
         logger.addAppender(newAppender);
@@ -92,7 +100,7 @@ public class MainActivity extends AppCompatActivity {
                 log.debug("ALARMMAN setup");
             }
         });
-        onStatusEvent(new RestartEvent());
+        onStatusEvent(new EventRestart());
 
         boolean autoscrollEnabled = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getBoolean("nsAutoScroll", true);
         switchAutoscroll.setChecked(autoscrollEnabled);
@@ -130,13 +138,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (id == R.id.action_clearlog) {
-            mTextView.setText("");
+            newAppender.clearLog();
             log.debug("Log cleared");
             return true;
         }
 
         if (id == R.id.action_restartservices) {
-            MainApp.bus().post(new RestartEvent());
+            MainApp.bus().post(new EventRestart());
             return true;
         }
 
@@ -146,7 +154,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (id == R.id.action_deliverqueue) {
-            UploadQueue.resend();
+            UploadQueue.resend("Menu");
             return true;
         }
 
@@ -157,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (id == R.id.action_ressenddanaapp) {
             XDripEmulator xe = new XDripEmulator();
-            xe.sendToBroadcastReceiverToDanaApp(getApplicationContext());
+            xe.sendToBroadcastReceiverToDanaAps(getApplicationContext());
             return true;
         }
 
@@ -194,13 +202,13 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public static class TextViewLogger extends AppenderBase<ILoggingEvent> {
+    public class TextViewLogger extends AppenderBase<ILoggingEvent> {
         private final Handler handler;
-        private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
+        private SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
         private TextView mTextView;
 
         private List<String> listLog = new ArrayList<String>();
-        private static int MAX_ERROR_LINES = 400;
+        private int MAX_ERROR_LINES = 400;
 
         private void addToLog(String str) {
             SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(MainApp.instance().getApplicationContext());
@@ -212,7 +220,6 @@ public class MainActivity extends AppCompatActivity {
             if (listLog.size() >= MAX_ERROR_LINES) {
                 listLog.remove(0);
             }
-            updateLog();
         }
 
         private void updateLog() {
@@ -220,7 +227,20 @@ public class MainActivity extends AppCompatActivity {
             for (String str : listLog) {
                 log += str + "\n";
             }
-            mTextView.setText(log);
+            setToGui(mTextView, log);
+        }
+
+        private void setToGui(final TextView textView, final String log) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    textView.setText(log);
+                    SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(MainApp.instance().getApplicationContext());
+                    if (SP.getBoolean("nsAutoScroll", true)) {
+                        scrollview.fullScroll(ScrollView.FOCUS_DOWN);
+                    }
+                }
+            });
         }
 
         public TextViewLogger(TextView mTextView, Handler handler) {
@@ -228,25 +248,16 @@ public class MainActivity extends AppCompatActivity {
             this.handler = handler;
         }
 
+        public void clearLog() {
+            listLog = new ArrayList<String>();
+            updateLog();
+        }
 
         @Override
         protected void append(final ILoggingEvent eventObject) {
-            if(mTextView!=null) {
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        addToLog(timeFormat.format(new Date()) + " " + eventObject.getMessage());
-                        SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(MainApp.instance().getApplicationContext());
-                        if (SP.getBoolean("nsAutoScroll", true)) {
-                            scrollview.post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    scrollview.fullScroll(ScrollView.FOCUS_DOWN);
-                                }
-                            });
-                        }
-                    }
-                });
+            if (mTextView != null) {
+                addToLog(timeFormat.format(new Date()) + " " + eventObject.getMessage());
+                updateLog();
             }
         }
     }
@@ -260,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Subscribe
-    public void onStatusEvent(final RestartEvent e) {
+    public void onStatusEvent(final EventRestart e) {
         SharedPreferences SP = PreferenceManager.getDefaultSharedPreferences(MainApp.instance().getApplicationContext());
         String web = SP.getString("ns_url", "");
         TextView viewWeb = ((TextView) findViewById(R.id.nsWeb));

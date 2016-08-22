@@ -16,36 +16,32 @@ import java.util.List;
 import info.nightscout.client.data.NSProfile;
 import info.nightscout.client.data.NSSgv;
 
-/**
- * Created by mike on 22.02.2016.
- */
-public class BroadcastSgvs {
-    private static Logger log = LoggerFactory.getLogger(BroadcastSgvs.class);
 
-    public void handleNewSgv(JSONObject sgv, Context context, boolean isDelta) {
+public class BroadcastDeviceStatus {
+    private static Logger log = LoggerFactory.getLogger(BroadcastDeviceStatus.class);
+
+    public void handleNewDeviceStatus(JSONObject status, Context context, boolean isDelta) {
         Bundle bundle = new Bundle();
-        bundle.putString("sgv", sgv.toString());
+        bundle.putString("devicestatuse", status.toString());
         bundle.putBoolean("delta", isDelta);
-        Intent intent = new Intent(Intents.ACTION_NEW_SGV);
+        Intent intent = new Intent(Intents.ACTION_NEW_DEVICESTATUS);
         intent.putExtras(bundle);
         intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
         context.sendBroadcast(intent);
         List<ResolveInfo> x = context.getPackageManager().queryBroadcastReceivers(intent, 0);
 
-        log.debug("SGV " + x.size() + " receivers");
+        log.debug("DEVICESTATUS " + x.size() + " receivers");
     }
-
-    public void handleNewSgv(JSONArray sgvs, Context context, boolean isDelta) {
+    public void handleNewDeviceStatus(JSONArray statuses, Context context, boolean isDelta) {
         Bundle bundle = new Bundle();
-        bundle.putString("sgvs", sgvs.toString());
+        bundle.putString("devicestatuses", statuses.toString());
         bundle.putBoolean("delta", isDelta);
-        Intent intent = new Intent(Intents.ACTION_NEW_SGV);
+        Intent intent = new Intent(Intents.ACTION_NEW_DEVICESTATUS);
         intent.putExtras(bundle);
         intent.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
         context.sendBroadcast(intent);
         List<ResolveInfo> x = context.getPackageManager().queryBroadcastReceivers(intent, 0);
 
-        log.debug("SGV " + x.size() + " receivers");
+        log.debug("DEVICESTATUS " + x.size() + " receivers");
     }
-
 }

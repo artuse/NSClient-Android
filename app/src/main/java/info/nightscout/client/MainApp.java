@@ -1,10 +1,13 @@
 package info.nightscout.client;
 
 import android.app.Application;
+import android.preference.PreferenceManager;
 
+import com.crashlytics.android.Crashlytics;
 import com.squareup.otto.Bus;
 import com.squareup.otto.ThreadEnforcer;
 
+import io.fabric.sdk.android.Fabric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,13 +28,13 @@ public class MainApp extends Application {
     private static NSClient nsClient = null;
 
     public static NSProfile nsProfile;
-    public static String nsActiveProfile = null;
-
-    public static UploadQueue uploadQueue = new UploadQueue();
 
     @Override
     public void onCreate() {
         super.onCreate();
+        if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean("enable_crashlytics", true)) {
+            Fabric.with(this, new Crashlytics());
+        }
         sInstance = this;
 
         sBus = new Bus(ThreadEnforcer.ANY);
@@ -55,6 +58,4 @@ public class MainApp extends Application {
     public static void setNsProfile(NSProfile profile) { nsProfile = profile; }
     public static NSProfile getNsProfile() { return nsProfile; }
 
-    public static void setNsActiveProfile(String activeProfile) { nsActiveProfile = activeProfile; }
-    public static String getNsActiveProfile() { return nsActiveProfile; }
 }

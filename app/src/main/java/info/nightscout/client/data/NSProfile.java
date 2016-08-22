@@ -8,9 +8,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-/**
- * Created by mike on 25.01.2016.
- */
 public class NSProfile {
     private JSONObject json = null;
     private String activeProfile = null;
@@ -28,10 +25,11 @@ public class NSProfile {
             defaultProfileName = (String) json.get("defaultProfile");
             store = json.getJSONObject("store");
             if (activeProfile != null && store.has(activeProfile)) {
-            defaultProfileName = activeProfile;
+                defaultProfileName = activeProfile;
             }
             profile = store.getJSONObject(defaultProfileName);
         } catch (JSONException e) {
+            e.printStackTrace();
         }
 
         return profile;
@@ -59,12 +57,13 @@ public class NSProfile {
                 dia = profile.getDouble("dia");
                 return dia;
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
         return 3D;
     }
 
-   public Double getCarbAbsorbtionRate() {
+    public Double getCarbAbsorbtionRate() {
         Double carbAbsorptionRate;
         JSONObject profile = getDefaultProfile();
         if (profile != null) {
@@ -72,35 +71,40 @@ public class NSProfile {
                 carbAbsorptionRate = profile.getDouble("carbs_hr");
                 return carbAbsorptionRate;
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
-       return 0D;
+        return 0D;
     }
 
     // mmol or mg/dl
-   public String getUnits() {
-       String units;
+    public String getUnits() {
+        String units;
         JSONObject profile = getDefaultProfile();
         if (profile != null) {
             try {
-                units = profile.getString("units");
-                return units;
+                if (profile.has("units")) {
+                    units = profile.getString("units");
+                    return units;
+                }
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
-       return "mg/dl";
+        return "mg/dl";
     }
 
-   public TimeZone getTimeZone() {
-       TimeZone timeZone;
+    public TimeZone getTimeZone() {
+        TimeZone timeZone;
         JSONObject profile = getDefaultProfile();
         if (profile != null) {
             try {
                 return TimeZone.getTimeZone(profile.getString("timezone"));
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
-       return TimeZone.getDefault();
+        return TimeZone.getDefault();
     }
 
     public Double getValueToTime(JSONArray array, Integer timeAsSeconds) {
@@ -128,6 +132,7 @@ public class NSProfile {
             try {
                 return getValueToTime(profile.getJSONArray("sens"),timeAsSeconds);
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
         return 0D;
@@ -139,6 +144,7 @@ public class NSProfile {
             try {
                 return getValueToTime(profile.getJSONArray("carbratio"),timeAsSeconds);
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
         return 0D;
@@ -150,6 +156,7 @@ public class NSProfile {
             try {
                 return getValueToTime(profile.getJSONArray("basal"),timeAsSeconds);
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
         return 0D;
@@ -161,6 +168,7 @@ public class NSProfile {
             try {
                 return getValueToTime(profile.getJSONArray("target_low"),timeAsSeconds);
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
         return 0D;
@@ -172,16 +180,30 @@ public class NSProfile {
             try {
                 return getValueToTime(profile.getJSONArray("target_high"), timeAsSeconds);
             } catch (JSONException e) {
+                e.printStackTrace();
             }
         }
         return 0D;
+    }
+
+    public void setActiveProfile(String activeProfile) {
+        this.activeProfile = activeProfile;
     }
 
     public String getActiveProfile() {
         return activeProfile;
     }
 
-    public static int minutesFromMidnight () {
+    public Double getMaxDailyBasal() {
+        Double max = 0d;
+        for (Integer hour = 0; hour < 24; hour ++) {
+            double value = getBasal(hour * 60 * 60);
+            if (value > max) max = value;
+        }
+        return max;
+    }
+
+    public static int secondsFromMidnight() {
         Calendar c = Calendar.getInstance();
         long now = c.getTimeInMillis();
         c.set(Calendar.HOUR_OF_DAY, 0);
@@ -189,6 +211,6 @@ public class NSProfile {
         c.set(Calendar.SECOND, 0);
         c.set(Calendar.MILLISECOND, 0);
         long passed = now - c.getTimeInMillis();
-        return (int) (passed / 1000 / 60);
+        return (int) (passed / 1000);
     }
 }
